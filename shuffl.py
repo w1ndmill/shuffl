@@ -1,4 +1,16 @@
-# Shuffle decode/encode
+#!/usr/bin/env python
+#
+#  SHUFFLE ENCODER
+#  by: w1ndmill
+#
+#  encode/decode text/data as a particular order of objects
+#
+#  TO DO:
+#  - Make it functional
+#  - Remove hardcoded character bit length from textToNum() + numToText()
+#  - string type analysis
+#  - file reader
+#
 
 from math import fabs as abs
 from math import ceil
