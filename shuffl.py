@@ -1,64 +1,43 @@
 # Shuffle decode/encode
 
 from math import fabs as abs
+from math import ceil
 from decimal import Decimal as d
 from decimal import *
 
 class shuffl:
 
-    def __init__(self, text = None, totalObjects = 1):
-        self.text = text
-        self.totalObjects = 1
-        
+    def __init__(self, data = None, totalObjects = 1):
+        self.data = data
+        self.dataType = None
+        self.totalObjects = totalObjects
+
+    cypher32  = " abcdefghijklmnopqrstuvwxyz,./'@"
+    cypher64a = " 1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz."
+    cypher64b = " 1234567890abcdefghijklmnopqrstuvwxyz!@#$%^&*()-=_+;':\",./<>?~`|"
+
     def setPrecision(self,num):
         getcontext().prec = num
 
     def setTotalObjects(self,num):
         self.totalObjects = num
 
-
-    @staticmethod
-    def decToBin(n):
-        total = ""
-        while n > 0:
-            total = str(n%d(2)) + total
-            n = n//d(2)
-        return total
-
-    @staticmethod
-    def binToDec(n):
-        total = d(0)
-        n = n[::-1]
-        for i in range(len(n)):
-            total += d(n[i])*(d(2)**d(i))
-        return total
-
-    @staticmethod
-    def fact(n):
-        n = d(n)
-        n //= d(1)
-        if (n == d(0)): return d(1)
-        total = d(1)
-        step = d(1)
-        while step <= n:
-            total *= step
-            step += d(1)
-        return total
-
-    def textToNum(text,key='a',cypher=" abcdefghijklmnopqrstuvwxyz,./'@"):
+    def textToNum(self, text, key='a', cypher = shuffl.cypher32):
         text = text.lower()
-        dict = {letter:num for (num,letter) in enumerate(list(cypher))}
+        code = {letter:num for (num,letter) in enumerate(list(cypher))}
         bigboi = ""
 
+        # convert text characters to binary, then append to string
         for letterNum,letter in enumerate(text):
-            temp = "{0:b}".format((dict[letter] + dict[key[letterNum%(len(key))]]) % 32)
+            temp = "{0:b}".format((code[letter] + code[key[letterNum%(len(key))]]) % len(code))
             while len(temp) != 6:
                 temp = "0" + temp
             bigboi = bigboi + temp
 
+        # return value in Decimal
         return binToDec(bigboi)
 
-    def numToText(num,key='a',cypher=" abcdefghijklmnopqrstuvwxyz,./'@"):
+    def numToText(self,num,key='a',cypher = shuffl.cypher32):
         code = list(cypher)
         text = ""
 
@@ -68,12 +47,12 @@ class shuffl:
         splitNums = [int(binNum[x:x+6],2) for x in range(0,len(binNum),6)]
 
         for splitID,splitNum in enumerate(splitNums):
-            text = text + code[(splitNum - code.index(key[splitID%(len(key))]))%32]
+            text = text + code[(splitNum - code.index(key[splitID%(len(key))])) % len(code)]
 
         return text
 
     # convert a numerical value to a list of slot numbers
-    def numToSlot(value,total):
+    def numToSlot(self,value,total):
         total = d(int(abs(total)))
         value = d(value)
         max = fact(total)      # calculate max combinations
@@ -96,7 +75,7 @@ class shuffl:
         return slots
 
     # convert a list of slot numbers to a numerical value
-    def slotToNum(slots):
+    def slotToNum(self,slots):
         total = len(slots)
         value = d(0)
 
@@ -107,7 +86,7 @@ class shuffl:
         return value
 
     # convert a list of slot numbers to a unique order of numbers
-    def slotToOrder(slots):
+    def slotToOrder(self,slots):
         items = list(range(len(slots) + 1))
         order = []
 
@@ -118,7 +97,7 @@ class shuffl:
         return order
 
     # convert a unique order of numbers to slot numbers
-    def orderToSlot(order):
+    def orderToSlot(self,order):
         if verifyOrder(order) != True:
             raise Exception("Invalid order list")
 
@@ -133,25 +112,6 @@ class shuffl:
 
         return [d(slot) for slot in slots]
 
-    def orderToCards(order):
-        shape = ["Spd","Hrt","Diam","Clb"]
-        symbol = ["A",'2','3','4','5','6','7','8','9','10','J','Q','K']
-        return [symbol[item%13]+"-"+shape[item//13] for item in order]
-
-    def cardsToOrder(cards):
-        shape = ["S","H","D","C"]
-        symbol = ["A",'2','3','4','5','6','7','8','9','10','J','Q','K']
-        cards = [card.upper().split('-') for card in cards]
-        return [symbol.index(card[0])+(13*shape.index(card[1][0])) for card in cards]
-
-
-    # verify order integrity
-    def verifyOrder(toCheck):
-        toVerify = toCheck[:]
-        toVerify.sort()
-        perfect = list(range(toVerify[-1] + 1))
-        return toVerify == perfect
-
     # shortcut
     def numToOrder(value,total):
         return slotToOrder(numToSlot(value,total))
@@ -160,6 +120,51 @@ class shuffl:
     def orderToNum(order):
         return slotToNum(orderToSlot(order))
 
+    # suggested precision for # of objects given
+    # 0.509x^1.24+1 --- Best under 1000 objects
+    @staticmethod
+    def suggestedPrecision(n):
+        return ceil(0.509*(n**1.24))+1
+
+    # verify order integrity
+    # (i.e. sequence ordered is 0,1,2...n-1,n)
+    @staticmethod
+    def verifyOrder(toCheck):
+        toVerify = toCheck[:]
+        toVerify.sort()
+        perfect = list(range(toVerify[-1] + 1))
+        return toVerify == perfect
+
+    # convert from decimal to binary supporting Decimal
+    @staticmethod
+    def decToBin(n):
+        total = ""
+        while n > 0:
+            total = str(n%d(2)) + total
+            n = n//d(2)
+        return total
+
+    # convert from binary to decimal supporting Decimal
+    @staticmethod
+    def binToDec(n):
+        total = d(0)
+        n = n[::-1]
+        for i in range(len(n)):
+            total += d(n[i])*(d(2)**d(i))
+        return total
+
+    # performs factorial supporting Decimal
+    @staticmethod
+    def fact(n):
+        n = d(n)
+        n //= d(1)
+        if (n == d(0)): return d(1)
+        total = d(1)
+        step = d(1)
+        while step <= n:
+            total *= step
+            step += d(1)
+        return total
 
 def main():
     numShuffled = d(80)
